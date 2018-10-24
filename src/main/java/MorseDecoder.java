@@ -56,6 +56,14 @@ public class MorseDecoder {
         for (int binIndex = 0; binIndex < totalBinCount; binIndex++) {
             // Get the right number of samples from the inputFile
             // Sum all the samples together and store them in the returnBuffer
+            int framesRead = inputFile.readFrames(sampleBuffer, BIN_SIZE);
+            returnBuffer[binIndex] = 0;
+            for (int sampleCount = 0; sampleCount < sampleBuffer.length; sampleCount++) {
+                returnBuffer[binIndex] += Math.abs(sampleBuffer[sampleCount]);
+            }
+            if (framesRead < BIN_SIZE && !(binIndex == totalBinCount - 1)) {
+                throw new RuntimeException("oh snap, read from WAV file");
+            }
         }
         return returnBuffer;
     }
@@ -66,6 +74,25 @@ public class MorseDecoder {
     /** Bin threshold for dots or dashes. Related to BIN_SIZE. You may need to modify this value. */
     private static final int DASH_BIN_COUNT = 8;
 
+    /**
+     * Helper method
+     * @param powerCount powercount
+     * @return
+     */
+    private static String powerCountToDotDash(final int powerCount) {
+        if (powerCount > 0) {
+            if (powerCount > DASH_BIN_COUNT) {
+                return "-";
+            } else {
+                return ".";
+            }
+        } else if (powerCount < 0) {
+            if (Math.abs(powerCount) > DASH_BIN_COUNT) {
+                return " ";
+            }
+        }
+        return "";
+    }
     /**
      * Convert power measurements to dots, dashes, and spaces.
      * <p>
@@ -88,6 +115,26 @@ public class MorseDecoder {
         // else if issilence and wassilence
         // else if issilence and not wassilence
 
+        int sawPowerCount = 0;
+        String returnString = "";
+        for (int binIndex = 0; binIndex < powerMeasurements.length; binIndex++) {
+            double powerMeasurement = powerMeasurements[binIndex];
+            if (powerMeasurement > POWER_THRESHOLD) {
+                if (sawPowerCount < 0) {
+                    returnString += powerCountToDotDash(sawPowerCount);
+                    sawPowerCount = 0;
+                }
+                sawPowerCount++;
+            } else {
+                if (sawPowerCount > 0) {
+                    returnString += powerCountToDotDash(sawPowerCount);
+                    sawPowerCount = 0;
+                }
+                sawPowerCount--;
+            }
+            returnString += powerCountToDotDash(sawPowerCount);
+            return returnString;
+        }
         return "";
     }
 
